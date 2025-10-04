@@ -1,0 +1,589 @@
+<!DOCTYPE html><html lang="en"><head><meta name="x-poe-datastore-behavior" content="local_only"><meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' data: blob: https://cdnjs.cloudflare.com https://cdn.jsdelivr.net https://code.jquery.com https://unpkg.com https://d3js.org https://threejs.org https://cdn.plot.ly https://stackpath.bootstrapcdn.com https://maps.googleapis.com https://cdn.tailwindcss.com https://ajax.googleapis.com https://kit.fontawesome.com https://cdn.datatables.net https://maxcdn.bootstrapcdn.com https://code.highcharts.com https://tako-static-assets-production.s3.amazonaws.com https://www.youtube.com https://fonts.googleapis.com https://fonts.gstatic.com https://pfst.cf2.poecdn.net https://puc.poecdn.net https://i.imgur.com https://wikimedia.org https://*.icons8.com https://*.giphy.com https://picsum.photos https://images.unsplash.com; frame-src 'self' https://www.youtube.com https://trytako.com; child-src 'self'; manifest-src 'self'; worker-src 'self'; upgrade-insecure-requests; block-all-mixed-content;">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MidJourney Collage Maker - Multi-Ratio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        .ratio-selector {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 10px;
+        }
+        
+        .ratio-selector label {
+            font-weight: bold;
+            color: #555;
+            margin-right: 15px;
+        }
+        
+        .ratio-buttons {
+            display: inline-flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .ratio-btn {
+            padding: 10px 20px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+        
+        .ratio-btn:hover {
+            border-color: #667eea;
+            background: #f0f0ff;
+        }
+        
+        .ratio-btn.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-color: #667eea;
+        }
+        
+        .ratio-info {
+            margin-top: 15px;
+            padding: 10px;
+            background: #e8f5e9;
+            border-radius: 5px;
+            font-size: 14px;
+            color: #2e7d32;
+        }
+        
+        .upload-area {
+            border: 3px dashed #ddd;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            background: #f9f9f9;
+            margin-bottom: 30px;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        
+        .upload-area:hover {
+            border-color: #667eea;
+            background: #f0f0ff;
+        }
+        
+        .upload-area.dragover {
+            border-color: #667eea;
+            background: #e8e8ff;
+            transform: scale(1.02);
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .upload-text {
+            font-size: 1.2em;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .upload-hint {
+            color: #999;
+            font-size: 0.9em;
+        }
+        
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 8px;
+            display: none;
+        }
+        
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+        
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+        
+        .canvas-container {
+            margin: 30px 0;
+            text-align: center;
+            display: none;
+        }
+        
+        .canvas-container.show {
+            display: block;
+        }
+        
+        canvas {
+            max-width: 100%;
+            height: auto;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .controls {
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 1em;
+            cursor: pointer;
+            margin: 0 10px;
+            transition: transform 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .image-slots {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .slot {
+            padding: 10px;
+            border-radius: 8px;
+            background: #f0f0f0;
+            text-align: center;
+        }
+        
+        .slot.filled {
+            background: #e8f5e9;
+        }
+        
+        .slot-title {
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 5px;
+        }
+        
+        .slot-filename {
+            font-size: 0.8em;
+            color: #888;
+            word-break: break-all;
+        }
+        
+        .instructions {
+            background: #f0f4ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 5px;
+        }
+        
+        .instructions h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+        }
+        
+        .instructions ul {
+            margin-left: 20px;
+            color: #666;
+        }
+        
+        .instructions li {
+            margin: 5px 0;
+        }
+    </style>
+<script src="https://puc.poecdn.net/authenticated_preview_page/syncedState.bd4eeeb8e8e02052ee92.js"></script></head>
+<body>
+    <div class="container">
+        <h1>🎨 MidJourney Collage Maker</h1>
+        <p class="subtitle">Create seamless collages with multiple aspect ratio options</p>
+        
+        <div class="ratio-selector">
+            <label>Select Image Aspect Ratio:</label>
+            <div class="ratio-buttons">
+                <button class="ratio-btn active" data-ratio="16:9" data-layout="2x2">16:9 (Landscape)</button>
+                <button class="ratio-btn" data-ratio="2:3" data-layout="4x1">2:3 (Portrait)</button>
+                <button class="ratio-btn" data-ratio="2:3" data-layout="2x2">2:3 (2x2 Grid)</button>
+                <button class="ratio-btn" data-ratio="9:16" data-layout="4x1">9:16 (Vertical)</button>
+                <button class="ratio-btn" data-ratio="9:16" data-layout="2x2">9:16 (2x2 Grid)</button>
+                <button class="ratio-btn" data-ratio="1:1" data-layout="2x2">1:1 (Square)</button>
+            </div>
+            <div class="ratio-info" id="ratioInfo">
+                Selected: 16:9 landscape images in a 2x2 grid layout
+            </div>
+        </div>
+        
+        <div class="instructions">
+            <h3>📋 How it works:</h3>
+            <ul>
+                <li>Select your desired aspect ratio above</li>
+                <li>Upload 4 images - they'll be automatically positioned based on keywords in filenames</li>
+                <li>Keywords detected: "person"/"profile" → Position 1, "tree" → Position 2, "landscape" → Position 3, "house" → Position 4</li>
+                <li>Images will be arranged seamlessly with no gaps or borders</li>
+                <li>Right-click the final collage to save it</li>
+            </ul>
+        </div>
+        
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-text">📁 Drop 4 images here or click to select</div>
+            <div class="upload-hint">Files should contain keywords: person/profile, tree, landscape, house</div>
+            <input type="file" id="fileInput" class="file-input" multiple="" accept="image/*">
+        </div>
+        
+        <div class="status" id="status"></div>
+        
+        <div class="image-slots" id="imageSlots">
+            <div class="slot" data-position="1">
+                <div class="slot-title">Position 1: Person/Profile</div>
+                <div class="slot-filename">-</div>
+            </div>
+            <div class="slot" data-position="2">
+                <div class="slot-title">Position 2: Tree</div>
+                <div class="slot-filename">-</div>
+            </div>
+            <div class="slot" data-position="3">
+                <div class="slot-title">Position 3: Landscape</div>
+                <div class="slot-filename">-</div>
+            </div>
+            <div class="slot" data-position="4">
+                <div class="slot-title">Position 4: House</div>
+                <div class="slot-filename">-</div>
+            </div>
+        </div>
+        
+        <div class="canvas-container" id="canvasContainer">
+            <canvas id="collageCanvas"></canvas>
+            <div class="controls">
+                <button class="btn" onclick="downloadCollage()">💾 Download Collage</button>
+                <button class="btn" onclick="resetCollage()">🔄 Start Over</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const status = document.getElementById('status');
+        const canvasContainer = document.getElementById('canvasContainer');
+        const canvas = document.getElementById('collageCanvas');
+        const ctx = canvas.getContext('2d');
+        const imageSlots = document.getElementById('imageSlots');
+        const ratioInfo = document.getElementById('ratioInfo');
+        
+        let loadedImages = {};
+        let currentRatio = '16:9';
+        let currentLayout = '2x2';
+        
+        // Keyword mappings for each position
+        const positionKeywords = {
+            1: ['person', 'profile', 'portrait', 'face', 'human', 'people'],
+            2: ['tree', 'forest', 'wood', 'branch', 'leaf', 'leaves'],
+            3: ['landscape', 'scenery', 'vista', 'panorama', 'nature', 'outdoor'],
+            4: ['house', 'home', 'building', 'architecture', 'cabin', 'cottage']
+        };
+        
+        // Ratio configurations
+        const ratioConfigs = {
+            '16:9-2x2': {
+                canvasWidth: 1920,
+                canvasHeight: 1080,
+                description: '16:9 landscape images in a 2x2 grid layout'
+            },
+            '2:3-4x1': {
+                canvasWidth: 1200,  // 4 images side by side, each 300px wide
+                canvasHeight: 450,  // Maintains 2:3 ratio for each image
+                description: '2:3 portrait images in a horizontal row'
+            },
+            '2:3-2x2': {
+                canvasWidth: 600,   // 2 images wide, each 300px
+                canvasHeight: 900,  // 2 images tall, each 450px
+                description: '2:3 portrait images in a 2x2 grid'
+            },
+            '9:16-4x1': {
+                canvasWidth: 1080,  // 4 images side by side, each 270px wide
+                canvasHeight: 480,  // Maintains 9:16 ratio for each image
+                description: '9:16 vertical images in a horizontal row'
+            },
+            '9:16-2x2': {
+                canvasWidth: 540,   // 2 images wide, each 270px
+                canvasHeight: 960,  // 2 images tall, each 480px
+                description: '9:16 vertical images in a 2x2 grid'
+            },
+            '1:1-2x2': {
+                canvasWidth: 1000,
+                canvasHeight: 1000,
+                description: '1:1 square images in a 2x2 grid'
+            }
+        };
+        
+        // Ratio button handling
+        document.querySelectorAll('.ratio-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.ratio-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentRatio = btn.dataset.ratio;
+                currentLayout = btn.dataset.layout;
+                const configKey = `${currentRatio}-${currentLayout}`;
+                ratioInfo.textContent = `Selected: ${ratioConfigs[configKey].description}`;
+                
+                // If images are already loaded, recreate the collage
+                if (Object.keys(loadedImages).length === 4) {
+                    createCollage();
+                }
+            });
+        });
+        
+        uploadArea.addEventListener('click', () => fileInput.click());
+        
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            handleFiles(e.dataTransfer.files);
+        });
+        
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+        
+        function findPosition(filename) {
+            const lowerFilename = filename.toLowerCase();
+            
+            for (let position in positionKeywords) {
+                for (let keyword of positionKeywords[position]) {
+                    if (lowerFilename.includes(keyword)) {
+                        return parseInt(position);
+                    }
+                }
+            }
+            return null;
+        }
+        
+        function handleFiles(files) {
+            if (files.length !== 4) {
+                showStatus('Please select exactly 4 images', 'error');
+                return;
+            }
+            
+            loadedImages = {};
+            let assignments = [];
+            let unassigned = [];
+            
+            // Reset slots
+            document.querySelectorAll('.slot').forEach(slot => {
+                slot.classList.remove('filled');
+                slot.querySelector('.slot-filename').textContent = '-';
+            });
+            
+            // First pass: assign images based on keywords
+            Array.from(files).forEach(file => {
+                if (!file.type.startsWith('image/')) {
+                    showStatus('All files must be images', 'error');
+                    return;
+                }
+                
+                const position = findPosition(file.name);
+                if (position && !loadedImages[position]) {
+                    loadedImages[position] = file;
+                    assignments.push(`${file.name} → Position ${position}`);
+                    
+                    // Update slot display
+                    const slot = document.querySelector(`.slot[data-position="${position}"]`);
+                    slot.classList.add('filled');
+                    slot.querySelector('.slot-filename').textContent = file.name;
+                } else {
+                    unassigned.push(file);
+                }
+            });
+            
+            // Second pass: fill empty positions with unassigned images
+            for (let i = 1; i <= 4; i++) {
+                if (!loadedImages[i] && unassigned.length > 0) {
+                    const file = unassigned.shift();
+                    loadedImages[i] = file;
+                    assignments.push(`${file.name} → Position ${i} (auto-assigned)`);
+                    
+                    const slot = document.querySelector(`.slot[data-position="${i}"]`);
+                    slot.classList.add('filled');
+                    slot.querySelector('.slot-filename').textContent = file.name;
+                }
+            }
+            
+            if (Object.keys(loadedImages).length === 4) {
+                showStatus('Images loaded successfully! Creating collage...', 'success');
+                createCollage();
+            } else {
+                showStatus('Could not assign all images to positions', 'error');
+            }
+        }
+        
+        function createCollage() {
+            const configKey = `${currentRatio}-${currentLayout}`;
+            const config = ratioConfigs[configKey];
+            
+            // Set canvas size based on selected ratio
+            canvas.width = config.canvasWidth;
+            canvas.height = config.canvasHeight;
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            let positions = [];
+            
+            if (currentLayout === '2x2') {
+                // 2x2 grid layout
+                const imageWidth = canvas.width / 2;
+                const imageHeight = canvas.height / 2;
+                
+                positions = [
+                    { x: 0, y: 0, width: imageWidth, height: imageHeight },                    // Top-left
+                    { x: imageWidth, y: 0, width: imageWidth, height: imageHeight },          // Top-right
+                    { x: 0, y: imageHeight, width: imageWidth, height: imageHeight },         // Bottom-left
+                    { x: imageWidth, y: imageHeight, width: imageWidth, height: imageHeight } // Bottom-right
+                ];
+            } else if (currentLayout === '4x1') {
+                // Horizontal row layout
+                const imageWidth = canvas.width / 4;
+                const imageHeight = canvas.height;
+                
+                positions = [
+                    { x: 0, y: 0, width: imageWidth, height: imageHeight },
+                    { x: imageWidth, y: 0, width: imageWidth, height: imageHeight },
+                    { x: imageWidth * 2, y: 0, width: imageWidth, height: imageHeight },
+                    { x: imageWidth * 3, y: 0, width: imageWidth, height: imageHeight }
+                ];
+            }
+            
+            let imagesLoaded = 0;
+            
+            for (let i = 1; i <= 4; i++) {
+                if (loadedImages[i]) {
+                    const img = new Image();
+                    const pos = positions[i - 1];
+                    
+                    img.onload = function() {
+                        // Calculate scaling to cover the area completely
+                        const scale = Math.max(pos.width / img.width, pos.height / img.height);
+                        const scaledWidth = img.width * scale;
+                        const scaledHeight = img.height * scale;
+                        
+                        // Center the image in its slot
+                        const offsetX = (pos.width - scaledWidth) / 2;
+                        const offsetY = (pos.height - scaledHeight) / 2;
+                        
+                        // Save context state
+                        ctx.save();
+                        
+                        // Clip to the exact image area
+                        ctx.beginPath();
+                        ctx.rect(pos.x, pos.y, pos.width, pos.height);
+                        ctx.clip();
+                        
+                        // Draw the image
+                        ctx.drawImage(img, 
+                            pos.x + offsetX, 
+                            pos.y + offsetY, 
+                            scaledWidth, 
+                            scaledHeight
+                        );
+                        
+                        // Restore context state
+                        ctx.restore();
+                        
+                        imagesLoaded++;
+                        if (imagesLoaded === 4) {
+                            canvasContainer.classList.add('show');
+                            showStatus('Collage created successfully! Right-click to save.', 'success');
+                        }
+                    };
+                    
+                    img.src = URL.createObjectURL(loadedImages[i]);
+                }
+            }
+        }
+        
+        function downloadCollage() {
+            const link = document.createElement('a');
+            const ratioLabel = currentRatio.replace(':', 'x');
+            link.download = `collage_${ratioLabel}_${currentLayout}_${new Date().getTime()}.png`;
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+        
+        function resetCollage() {
+            loadedImages = {};
+            canvasContainer.classList.remove('show');
+            fileInput.value = '';
+            status.style.display = 'none';
+            
+            document.querySelectorAll('.slot').forEach(slot => {
+                slot.classList.remove('filled');
+                slot.querySelector('.slot-filename').textContent = '-';
+            });
+        }
+        
+        function showStatus(message, type) {
+            status.textContent = message;
+            status.className = `status ${type}`;
+        }
+    </script>
+
+
+</body></html>
